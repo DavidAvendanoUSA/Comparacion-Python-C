@@ -1,42 +1,58 @@
 #include <stdio.h>
 #include <time.h>
+#include <unistd.h>
+#include <stdlib.h>
 
-long long facto_recursivo(int n) {  
-    if (n < 0) {
-        printf("Error\n");
-        return -1;
-    } else if (n == 0) {
-        return 1;
-    } else {
-        return n * facto_recursivo(n - 1);
+// Función recursiva para calcular factorial
+unsigned long long factorial_recursivo(int n) {
+    if (n <= 1) return 1;
+    return n * factorial_recursivo(n - 1);
+}
+
+// Función para obtener memoria residente (Linux)
+double obtener_memoria_MB() {
+    long rss = 0;
+    FILE* fp = fopen("/proc/self/statm", "r");
+    if (fp == NULL) return 0.0;
+    if (fscanf(fp, "%*s %ld", &rss) != 1) {
+        fclose(fp);
+        return 0.0;
     }
+    fclose(fp);
+    long page_size = sysconf(_SC_PAGESIZE);
+    return (rss * page_size) / (1024.0 * 1024.0);
+}
+
+// Función para calcular diferencia de tiempo en segundos
+double tiempo_transcurrido(struct timespec inicio, struct timespec fin) {
+    return (fin.tv_sec - inicio.tv_sec) +
+           (fin.tv_nsec - inicio.tv_nsec) / 1e9;
 }
 
 int main() {
-    int repeticiones = 10000;  
-    double tiempos_promedio[20];  
+    printf("n   n!                  Tiempo (s)       Memoria (MB)\n");
+    printf("--  -------------------  --------------   -------------\n");
+    
+    for (int i = 1; i <= 20; i++) {
+        // Medir memoria antes
+        double mem_antes = obtener_memoria_MB();
 
-    for (int n = 1; n <= 20; n++) {
-        long long resultado = 0;  
-        clock_t inicio = clock();
+        // Medir tiempo con alta resolución
+        struct timespec start, end;
+        clock_gettime(CLOCK_MONOTONIC, &start);
+        
+        unsigned long long fact = factorial_recursivo(i);
+        
+        clock_gettime(CLOCK_MONOTONIC, &end);
+        double tiempo = tiempo_transcurrido(start, end);
 
-        resultado = facto_recursivo(n);
-        
-        for (int i = 0; i < repeticiones - 1; i++) {
-            facto_recursivo(n);
-        }
+        // Medir memoria después
+        double mem_despues = obtener_memoria_MB();
+        double mem_uso = mem_despues - mem_antes;
 
-        clock_t fin = clock();
-        
-        double tiempo_total = (double)(fin - inicio) / CLOCKS_PER_SEC;
-        double tiempo_promedio = tiempo_total / repeticiones;
-        tiempos_promedio[n-1] = tiempo_promedio;
-        
-        printf("Para n = %2d:\n", n);
-        printf("  Tiempo total: %.6f segundos\n", tiempo_total);
-        printf("  Tiempo promedio: %.10f segundos\n", tiempo_promedio);
-        printf("  Resultado: %lld\n", resultado);  
-        printf("----------------------------------------\n");
+        // Mostrar resultados
+        printf("%-2d  %-19llu  %-15.10f   %.6f\n", i, fact, tiempo, mem_uso);
     }
+
     return 0;
 }

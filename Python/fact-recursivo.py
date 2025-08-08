@@ -1,6 +1,6 @@
 import time
-import matplotlib.pyplot as plt
 from memory_profiler import memory_usage
+import matplotlib.pyplot as plt
 
 def factorial_recursivo(n):
     if n < 0:
@@ -10,75 +10,58 @@ def factorial_recursivo(n):
     else:
         return n * factorial_recursivo(n - 1)
 
-veces = 10000
-tiempos = []
-memoria_promedio = []
-memoria_pico = []
+def benchmark_recursivo(func, n, veces=1):
+    # Medir tiempo promedio (ejecutando 'veces' veces)
+    start = time.perf_counter()
+    for _ in range(veces):
+        resultado = func(n)
+    end = time.perf_counter()
+    tiempo_total = end - start
+    tiempo_promedio = tiempo_total / veces
 
-numeros = list(range(1, 21))
+    # Medir memoria (una ejecución, para pico)
+    mem = memory_usage((func, (n,)), max_iterations=1)
+    memoria_max = max(mem) if mem else None
 
-print("🔍 Iniciando análisis de tiempo y memoria...")
-print("=" * 60)
+    return tiempo_promedio, memoria_max, resultado
 
-for numero in numeros:
+if __name__ == "__main__":
+    veces = 10000
+    numeros = list(range(1, 21))
 
-    inicio = time.time()
+    tiempos = []
+    memorias = []
+    resultados = []
 
-    mem_usage = memory_usage((lambda: [factorial_recursivo(numero) for _ in range(veces)]),
-                              max_usage=True, retval=True)
+    for n in numeros:
+        tiempo_prom, mem_max, resultado = benchmark_recursivo(factorial_recursivo, n, veces)
+        tiempos.append(tiempo_prom)
+        memorias.append(mem_max)
+        resultados.append(resultado)
 
-    fin = time.time()
+        print(f"n = {n}: tiempo promedio = {tiempo_prom:.10f} s, memoria pico = {mem_max} MiB, resultado = {resultado}")
+        print("-" * 40)
 
-    total_tiempo = fin - inicio
-    promedio_tiempo = total_tiempo / veces
+    # Gráfica tiempo
+    plt.figure(figsize=(10, 5))
+    plt.plot(numeros, tiempos, marker="o", label="Recursivo")
+    plt.title("Tiempo promedio de ejecución (factorial recursivo)")
+    plt.xlabel("n")
+    plt.ylabel("Tiempo promedio (s)")
+    plt.grid(True)
+    plt.xticks(numeros)
+    plt.legend()
+    plt.savefig("tiempo_recursivo.png")
+    plt.close()
 
-    resultado = factorial_recursivo(numero)
-
-    max_mem = mem_usage[0]
-    avg_mem = max_mem / veces
-
-    tiempos.append(promedio_tiempo)
-    memoria_promedio.append(avg_mem)
-    memoria_pico.append(max_mem)
-
-    print(f"Para n = {numero}:")
-    print(f"Tiempo total: {total_tiempo:.6f} segundos")
-    print(f"Tiempo promedio: {promedio_tiempo:.10f} segundos")
-    print(f"Memoria promedio por llamada: {avg_mem:.6f} MB")
-    print(f"Pico máximo de memoria: {max_mem:.6f} MB")
-    print(f"Resultado: {resultado}")
-    print("-" * 60)
-
-print("\nGenerando gráficos de análisis...")
-
-
-plt.style.use('ggplot')
-fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 15))
-
-ax1.plot(numeros, tiempos, 'o-', color='#1f77b4', linewidth=2, markersize=8)
-ax1.set_title('Tiempo Promedio por Ejecución', fontsize=16, pad=20)
-ax1.set_xlabel('Valor de n', fontsize=12)
-ax1.set_ylabel('Segundos', fontsize=12)
-ax1.grid(True, linestyle='--', alpha=0.7)
-ax1.set_xticks(numeros)
-ax1.set_yscale('log')
-
-
-ax2.plot(numeros, memoria_promedio, 's-', color='#2ca02c', linewidth=2, markersize=8)
-ax2.set_title('Memoria Promedio por Llamada', fontsize=16, pad=20)
-ax2.set_xlabel('Valor de n', fontsize=12)
-ax2.set_ylabel('Megabytes (MB)', fontsize=12)
-ax2.grid(True, linestyle='--', alpha=0.7)
-ax2.set_xticks(numeros)
-
-
-ax3.bar(numeros, memoria_pico, color='#d62728', alpha=0.7)
-ax3.set_title('Pico Máximo de Memoria por Conjunto de Ejecuciones', fontsize=16, pad=20)
-ax3.set_xlabel('Valor de n', fontsize=12)
-ax3.set_ylabel('Megabytes (MB)', fontsize=12)
-ax3.grid(True, linestyle='--', alpha=0.7)
-ax3.set_xticks(numeros)
-
-plt.tight_layout(pad=3.0)
-plt.savefig("analisis_factorial_recursivo.png", dpi=150)
-plt.show()
+    # Gráfica memoria
+    plt.figure(figsize=(10, 5))
+    plt.plot(numeros, memorias, marker="o", label="Memoria (pico por ejecución)")
+    plt.title("Uso de memoria (factorial recursivo)")
+    plt.xlabel("n")
+    plt.ylabel("Memoria (MiB)")
+    plt.grid(True)
+    plt.xticks(numeros)
+    plt.legend()
+    plt.savefig("memoria_recursivo.png")
+    plt.close()
